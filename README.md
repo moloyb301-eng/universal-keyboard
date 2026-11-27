@@ -27,10 +27,15 @@ Bluetooth keyboard and mouse. No drivers or companion app needed on Windows.
 
 ## Install
 
-1. On your phone, open the [**nightly release**](../../releases/tag/nightly)
+1. On your phone, open the **[nightly release](https://github.com/moloyb301-eng/universal-keyboard/releases/tag/nightly)**
    and download `universal-keyboard.apk`.
 2. Open it and allow installing from your browser/files app when asked.
 3. Launch **Universal Keyboard** and allow **Nearby devices**.
+
+Direct APK link: https://github.com/moloyb301-eng/universal-keyboard/releases/download/nightly/universal-keyboard.apk
+
+After that, the app checks for new builds itself and offers an **Update** button
+(also under ⚙ → **Check for updates**).
 
 ## Pair with your handheld
 

@@ -22,6 +22,7 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
@@ -35,6 +36,7 @@ import com.universalkeyboard.hid.KeyStroke
 import com.universalkeyboard.hid.Modifiers
 import com.universalkeyboard.input.KeyCaptureView
 import com.universalkeyboard.ui.TrackpadView
+import com.universalkeyboard.update.Updater
 import kotlin.math.roundToInt
 
 class MainActivity : Activity(), HidController.Listener {
@@ -51,6 +53,8 @@ class MainActivity : Activity(), HidController.Listener {
     private var imeVisible = false
     private var askedToEnableBluetooth = false
     private var lastNotConnectedToast = 0L
+    private var updateCheckRunning = false
+    private var pendingUpdate: Updater.Release? = null
 
     // ------------------------------------------------------------------ lifecycle
 
@@ -93,11 +97,20 @@ class MainActivity : Activity(), HidController.Listener {
         super.onStart()
         HidController.addListener(this)
         ensureReady(userInitiated = false)
+        if (System.currentTimeMillis() - prefs.lastUpdateCheck > AUTO_UPDATE_CHECK_MS) {
+            checkForUpdates(manual = false)
+        }
     }
 
     override fun onResume() {
         super.onResume()
         main.postDelayed({ keyCapture.showKeyboard() }, 300)
+        // Back from the "install unknown apps" settings screen.
+        val pending = pendingUpdate
+        if (pending != null && packageManager.canRequestPackageInstalls()) {
+            pendingUpdate = null
+            downloadAndInstall()
+        }
     }
 
     override fun onStop() {
@@ -456,8 +469,9 @@ class MainActivity : Activity(), HidController.Listener {
         box.addView(smart)
         box.addView(note)
 
-        dialog().setTitle("Settings")
+        dialog().setTitle("Settings · v${Updater.installedVersionName(this)}")
             .setView(ScrollView(this).apply { addView(box) })
+            .setNeutralButton("Check for updates") { _, _ -> checkForUpdates(manual = true) }
             .setPositiveButton("Save") { _, _ ->
                 prefs.pointerSpeed = 0.5f + pointer.progress / 10f
                 prefs.scrollSpeed = 0.3f + scroll.progress / 10f
@@ -472,7 +486,102 @@ class MainActivity : Activity(), HidController.Listener {
             .show()
     }
 
+    // ------------------------------------------------------------------ updates
+
+    private fun checkForUpdates(manual: Boolean) {
+        if (updateCheckRunning) return
+        updateCheckRunning = true
+        prefs.lastUpdateCheck = System.currentTimeMillis()
+        if (manual) toast("Checking for updates…")
+        Thread {
+            val result = runCatching { Updater.fetchLatest() }
+            runOnUiThread {
+                updateCheckRunning = false
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                result.onSuccess { release ->
+                    val newer = release.versionCode > Updater.installedVersionCode(this)
+                    when {
+                        newer && (manual || release.versionCode != prefs.skippedVersionCode) -> showUpdateDialog(release)
+                        manual -> toast("You're on the latest version (${Updater.installedVersionName(this)})")
+                    }
+                }.onFailure {
+                    if (manual) toast("Couldn't check for updates: ${it.message}")
+                }
+            }
+        }.start()
+    }
+
+    private fun showUpdateDialog(release: Updater.Release) {
+        val notes = if (release.notes.isNotBlank()) "\n\nWhat's new:\n${release.notes}" else ""
+        dialog().setTitle("Update available")
+            .setMessage(
+                "Version ${release.versionName} is ready.\n" +
+                    "You have ${Updater.installedVersionName(this)}.$notes",
+            )
+            .setPositiveButton("Update") { _, _ -> startUpdate(release) }
+            .setNegativeButton("Later", null)
+            .setNeutralButton("Skip this version") { _, _ -> prefs.skippedVersionCode = release.versionCode }
+            .show()
+    }
+
+    private fun startUpdate(release: Updater.Release) {
+        if (packageManager.canRequestPackageInstalls()) {
+            downloadAndInstall()
+            return
+        }
+        pendingUpdate = release
+        dialog().setTitle("Allow updates")
+            .setMessage(
+                "Android needs your OK for Universal Keyboard to install its own updates.\n\n" +
+                    "Turn on “Allow from this source”, then come back. The update continues automatically.",
+            )
+            .setPositiveButton("Open settings") { _, _ ->
+                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            }
+            .setNegativeButton("Cancel") { _, _ -> pendingUpdate = null }
+            .show()
+    }
+
+    private fun downloadAndInstall() {
+        val label = TextView(this).apply {
+            text = "Downloading…"
+            setTextColor(getColor(R.color.text))
+        }
+        val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            isIndeterminate = true
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(12), dp(22), dp(8))
+            addView(label)
+            addView(bar)
+        }
+        val progress = dialog().setTitle("Updating").setView(box).setCancelable(false).show()
+        Thread {
+            val result = runCatching {
+                val apk = Updater.download(this) { percent ->
+                    runOnUiThread {
+                        if (percent >= 0) {
+                            bar.isIndeterminate = false
+                            bar.progress = percent
+                            label.text = "Downloading… $percent%"
+                        }
+                    }
+                }
+                runOnUiThread { label.text = "Installing…" }
+                Updater.install(this, apk)
+            }
+            runOnUiThread {
+                if (!isDestroyed) progress.dismiss()
+                result.onFailure { toast("Update failed: ${it.message}") }
+            }
+        }.start()
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
 
     private fun dialog() = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
 
@@ -485,5 +594,6 @@ class MainActivity : Activity(), HidController.Listener {
         const val DISCOVERABLE_SECONDS = 180
         const val REPEAT_DELAY_MS = 400L
         const val REPEAT_INTERVAL_MS = 50L
+        const val AUTO_UPDATE_CHECK_MS = 60 * 60 * 1000L // at most hourly on app start
     }
 }

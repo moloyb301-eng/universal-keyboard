@@ -28,6 +28,14 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("smart_typing", false)
         set(v) = sp.edit().putBoolean("smart_typing", v).apply()
 
+    var lastUpdateCheck: Long
+        get() = sp.getLong("last_update_check", 0L)
+        set(v) = sp.edit().putLong("last_update_check", v).apply()
+
+    var skippedVersionCode: Long
+        get() = sp.getLong("skipped_version_code", 0L)
+        set(v) = sp.edit().putLong("skipped_version_code", v).apply()
+
     companion object {
         const val DEFAULT_MOUSE_RATE = 125
         val MOUSE_RATES = listOf(125, 90, 60, 45)

@@ -67,31 +67,53 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
 
-      - name: Rename APK
+      - name: Package APK and version info
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk dist/universal-keyboard.apk
+          # Read by the in-app updater to decide whether an update is available.
+          jq -n \
+            --argjson code "$GITHUB_RUN_NUMBER" \
+            --arg name "$VERSION_NAME" \
+            --arg sha "${GITHUB_SHA::7}" \
+            --arg notes "$(git log -1 --format=%s)" \
+            '{versionCode: $code, versionName: $name, sha: $sha, notes: $notes}' > dist/version.json
+          cat dist/version.json
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: universal-keyboard-${{ steps.version.outputs.name }}
-          path: dist/universal-keyboard.apk
+          path: |
+            dist/universal-keyboard.apk
+            dist/version.json
 
-      # A "nightly" release that always points at the newest main build, so
-      # the APK can be downloaded on the phone from a fixed link.
+      # A "nightly" release that always points at the newest main build. It is
+      # updated in place (never deleted) so its link and the in-app updater
+      # keep working. The APK goes up before version.json, so the app never
+      # sees a new version number before the matching APK is there.
       - name: Publish nightly release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
         run: |
-          gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
-          gh release create nightly dist/universal-keyboard.apk \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --prerelease \
-            --title "Nightly build ${{ steps.version.outputs.name }}" \
-            --notes "Latest build from \`main\` (${GITHUB_SHA::7}). Download **universal-keyboard.apk** below on your phone and install it."
+          git tag -f nightly "$GITHUB_SHA"
+          git push -f origin refs/tags/nightly
+          NOTES="Latest build from \`main\`: $(git log -1 --format=%s) (${GITHUB_SHA::7}).
+
+          Download **universal-keyboard.apk** below on your phone and install it. Once installed, the app updates itself."
+          if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit nightly --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Nightly build $VERSION_NAME" --notes "$NOTES"
+          else
+            gh release create nightly --repo "$GITHUB_REPOSITORY" --prerelease --verify-tag \
+              --title "Nightly build $VERSION_NAME" --notes "$NOTES"
+          fi
+          gh release upload nightly dist/universal-keyboard.apk --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload nightly dist/version.json --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Publish tagged release
         if: startsWith(github.ref, 'refs/tags/v')

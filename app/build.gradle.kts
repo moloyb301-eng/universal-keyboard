@@ -16,7 +16,26 @@ android {
         versionName = System.getenv("VERSION_NAME") ?: "0.1.0-dev"
     }
 
+    // CI signs every build with the same permanent key (from repo secrets), so
+    // each new APK installs as an update over the previous one. Local builds
+    // without the key fall back to the machine's own debug key.
+    val stableKeystore = System.getenv("SIGNING_KEYSTORE")
+    signingConfigs {
+        if (stableKeystore != null) {
+            create("stable") {
+                storeFile = file(stableKeystore)
+                storeType = "pkcs12"
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_STORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (stableKeystore != null) signingConfig = signingConfigs.getByName("stable")
+        }
         release {
             isMinifyEnabled = false
         }

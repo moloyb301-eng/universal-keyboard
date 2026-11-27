@@ -18,8 +18,6 @@ jobs:
   build:
     name: Build debug APK
     runs-on: ubuntu-latest
-    env:
-      DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
 
     steps:
       - name: Check out code
@@ -36,21 +34,31 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      # Every build must be signed with the same key, or Android refuses to
-      # install the update over the previous version. Use the repo secret if
-      # it's set, otherwise keep the key in the Actions cache.
-      - name: Restore signing key from secret
-        if: env.DEBUG_KEYSTORE_BASE64 != ''
+      # Every published build must be signed with the same permanent key, or
+      # Android refuses to install it as an update. Pull requests from forks
+      # and Dependabot can't read secrets; they still build, but never publish.
+      - name: Set up signing key
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
         run: |
-          mkdir -p ~/.android
-          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
-
-      - name: Restore signing key from cache
-        if: env.DEBUG_KEYSTORE_BASE64 == ''
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: debug-keystore-v1
+          if [ -z "$SIGNING_KEYSTORE_BASE64" ]; then
+            if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+              echo "::warning::No signing key available; building with a throwaway key (not published)."
+              exit 0
+            fi
+            echo "::error::Signing key secrets are missing; refusing to publish an APK that can't update the installed app."
+            exit 1
+          fi
+          KS="$RUNNER_TEMP/signing.p12"
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$KS"
+          keytool -list -storetype pkcs12 -keystore "$KS" -storepass "$SIGNING_STORE_PASSWORD" -alias "$SIGNING_KEY_ALIAS" | grep -i "fingerprint"
+          {
+            echo "SIGNING_KEYSTORE=$KS"
+            echo "SIGNING_STORE_PASSWORD=$SIGNING_STORE_PASSWORD"
+            echo "SIGNING_KEY_ALIAS=$SIGNING_KEY_ALIAS"
+          } >> "$GITHUB_ENV"
 
       - name: Work out version
         id: version
@@ -81,6 +89,11 @@ jobs:
             --arg notes "$(git log -1 --format=%s)" \
             '{versionCode: $code, versionName: $name, sha: $sha, notes: $notes}' > dist/version.json
           cat dist/version.json
+
+      - name: Show APK signing certificate
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs dist/universal-keyboard.apk | grep -E "SHA-256|DN"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

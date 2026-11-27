@@ -92,13 +92,14 @@ To build locally you need JDK 17, the Android SDK, and Gradle 8.10+:
 gradle assembleDebug
 ```
 
-### Keeping the same signing key
+### Signing
 
 Android only installs an update over an existing app if both are signed with the
-same key. CI keeps its debug key in the Actions cache. That cache expires after
-7 days without builds, and then you'd have to uninstall before installing.
-To make the key permanent, add it as the repository secret `DEBUG_KEYSTORE_BASE64`
-(base64 of a `debug.keystore` with the standard `android` passwords).
+same key. CI signs every build with one permanent key stored in the repository
+secrets `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD` and
+`SIGNING_KEY_ALIAS`. Builds on `main` fail instead of publishing if those
+secrets are missing. Keep a private backup of the keystore: if it is lost,
+every phone has to uninstall and reinstall once.
 
 ## License
 

@@ -1,0 +1,60 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Pairing / connection
+        - Typing (phone keyboard)
+        - Shortcut bar
+        - Trackpad / clicks / scrolling
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: phone
+    attributes:
+      label: Phone and Android version
+      placeholder: Galaxy S23 Ultra, Android 15 (One UI 7)
+    validations:
+      required: true
+  - type: dropdown
+    id: ime
+    attributes:
+      label: Phone keyboard
+      options:
+        - Samsung Keyboard
+        - Gboard
+        - SwiftKey
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host device and Windows version
+      placeholder: ROG Ally, Windows 11 24H2
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in Android Settings → Apps → Universal Keyboard
+  - type: dropdown
+    id: smart
+    attributes:
+      label: Smart typing setting
+      options:
+        - "Off"
+        - "On"

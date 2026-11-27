@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FF101114</color>
+    <color name="key">#FF262931</color>
+    <color name="key_pressed">#FF3A3F4B</color>
+    <color name="text">#FFE6E8EE</color>
+    <color name="text_dim">#FF8A90A0</color>
+    <color name="accent">#FF7C9CFF</color>
+    <color name="status_ok">#FF3DDC84</color>
+    <color name="status_wait">#FFFFC857</color>
+    <color name="status_off">#FFFF6B6B</color>
+    <color name="ic_launcher_background">#FF3D5AFE</color>
+</resources>

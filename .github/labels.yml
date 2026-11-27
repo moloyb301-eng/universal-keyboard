@@ -1,0 +1,66 @@
+# Issue/PR labels. Synced to GitHub by .github/workflows/labels.yml.
+
+# --- Type ---
+- name: bug
+  color: "d73a4a"
+  description: Something isn't working
+- name: enhancement
+  color: "a2eeef"
+  description: New feature or improvement
+- name: documentation
+  color: "0075ca"
+  description: README, guides, or code comments
+- name: question
+  color: "d876e3"
+  description: Needs more information or discussion
+- name: dependencies
+  color: "0366d6"
+  description: Dependency or GitHub Actions update
+
+# --- Area ---
+- name: "area: bluetooth"
+  color: "1d76db"
+  description: Pairing, connection, HID registration
+- name: "area: keyboard"
+  color: "5319e7"
+  description: Typing through the phone's keyboard, shortcut bar
+- name: "area: trackpad"
+  color: "0e8a16"
+  description: Pointer, clicks, scrolling, gestures
+- name: "area: ui"
+  color: "fbca04"
+  description: Layout, settings, visuals
+- name: "area: ci"
+  color: "bfdadc"
+  description: GitHub Actions, builds, releases
+
+# --- Compatibility ---
+- name: "device: phone"
+  color: "c5def5"
+  description: Specific to a phone model or Android version
+- name: "device: host"
+  color: "c5def5"
+  description: Specific to a Windows handheld or PC
+- name: "ime: samsung keyboard"
+  color: "f9d0c4"
+  description: Behaviour specific to Samsung Keyboard
+- name: "ime: other"
+  color: "f9d0c4"
+  description: Gboard, SwiftKey or other keyboards
+
+# --- Workflow ---
+- name: good first issue
+  color: "7057ff"
+  description: Good for newcomers
+- name: help wanted
+  color: "008672"
+  description: Extra attention is needed
+- name: duplicate
+  color: "cfd3d7"
+  description: This issue or pull request already exists
+- name: wontfix
+  color: "ffffff"
+  description: This will not be worked on
+- name: invalid
+  color: "e4e669"
+  description: This doesn't seem right

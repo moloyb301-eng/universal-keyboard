@@ -47,7 +47,7 @@ jobs:
 
       - name: Restore signing key from cache
         if: env.DEBUG_KEYSTORE_BASE64 == ''
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.android/debug.keystore
           key: debug-keystore-v1

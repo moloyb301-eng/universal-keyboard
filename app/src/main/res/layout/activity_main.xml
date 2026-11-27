@@ -68,14 +68,103 @@
             android:text="⚙" />
     </LinearLayout>
 
-    <com.universalkeyboard.ui.TrackpadView
-        android:id="@+id/trackpad"
+    <!-- [Trackpad | Claude] tabs for the area below, and where typing goes. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/tabTrackpad"
+            style="@style/TabButton"
+            android:text="Trackpad" />
+
+        <Button
+            android:id="@+id/tabClaude"
+            style="@style/TabButton"
+            android:layout_marginStart="4dp"
+            android:text="Claude" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/btnTarget"
+            style="@style/TabButton"
+            android:contentDescription="Where the phone keyboard types"
+            android:text="Keyboard → PC" />
+    </LinearLayout>
+
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="6dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <com.universalkeyboard.ui.TrackpadView
+            android:id="@+id/trackpad"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:id="@+id/claudePanel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/claudeStatusDot"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="8dp"
+                    android:text="●"
+                    android:textColor="@color/status_off"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/claudeStatusText"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="@color/text"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btnClaudeAction"
+                    style="@style/TopButton"
+                    android:text="Reconnect" />
+
+                <Button
+                    android:id="@+id/btnClaudePair"
+                    style="@style/TopButton"
+                    android:text="Pair" />
+            </LinearLayout>
+
+            <!-- ClaudePanel adds the terminal WebView here on first use. -->
+            <FrameLayout
+                android:id="@+id/claudeTerminalHost"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+    </FrameLayout>
 
     <LinearLayout
+        android:id="@+id/mouseRow"
         android:layout_width="match_parent"
         android:layout_height="44dp"
         android:layout_marginTop="6dp"

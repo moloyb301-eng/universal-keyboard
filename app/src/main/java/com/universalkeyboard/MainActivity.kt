@@ -29,12 +29,15 @@ import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import com.universalkeyboard.claude.ClaudePanel
 import com.universalkeyboard.hid.Hid
 import com.universalkeyboard.hid.HidController
 import com.universalkeyboard.hid.HidController.State
 import com.universalkeyboard.hid.KeyStroke
 import com.universalkeyboard.hid.Modifiers
 import com.universalkeyboard.input.KeyCaptureView
+import com.universalkeyboard.input.KeyOutput
+import com.universalkeyboard.input.KeyOutput.Target
 import com.universalkeyboard.ui.TrackpadView
 import com.universalkeyboard.update.Updater
 import kotlin.math.roundToInt
@@ -47,6 +50,10 @@ class MainActivity : Activity(), HidController.Listener {
     private lateinit var trackpad: TrackpadView
     private lateinit var keyCapture: KeyCaptureView
     private lateinit var shortcutRow: LinearLayout
+    private lateinit var claudePanel: ClaudePanel
+    private lateinit var tabTrackpad: Button
+    private lateinit var tabClaude: Button
+    private lateinit var btnTarget: Button
 
     private val main = Handler(Looper.getMainLooper())
     private val modifierButtons = mutableMapOf<Int, Button>()
@@ -77,6 +84,16 @@ class MainActivity : Activity(), HidController.Listener {
         findViewById<Button>(R.id.btnSettings).setOnClickListener { showSettings() }
         setupMouseButton(findViewById(R.id.btnLeft), Hid.MOUSE_LEFT)
         setupMouseButton(findViewById(R.id.btnRight), Hid.MOUSE_RIGHT)
+
+        claudePanel = ClaudePanel(this, findViewById(R.id.claudePanel), prefs) { keyCapture.showKeyboard() }
+        tabTrackpad = findViewById(R.id.tabTrackpad)
+        tabClaude = findViewById(R.id.tabClaude)
+        btnTarget = findViewById(R.id.btnTarget)
+        tabTrackpad.setOnClickListener { showTab(claude = false) }
+        tabClaude.setOnClickListener { showTab(claude = true) }
+        btnTarget.setOnClickListener { toggleTarget() }
+        KeyOutput.listener = { refreshTarget() }
+        showTab(claude = false)
 
         trackpad.onClick = { keyCapture.resetMirror() }
         buildShortcutRow()
@@ -119,7 +136,10 @@ class MainActivity : Activity(), HidController.Listener {
     }
 
     override fun onDestroy() {
+        KeyOutput.listener = null
+        claudePanel.destroy()
         if (isFinishing) {
+            KeyOutput.target = Target.PC
             Modifiers.clear()
             HidController.shutdown()
         }
@@ -253,6 +273,45 @@ class MainActivity : Activity(), HidController.Listener {
         HidController.mouseIntervalMs = (1000 / prefs.mouseRate(HidController.host?.address)).toLong()
     }
 
+    // ------------------------------------------------------------------ tabs / typing target
+
+    /**
+     * Shows the trackpad or the Claude terminal. Typing follows the tab
+     * (Claude tab → Claude, Trackpad → PC); the target button overrides that.
+     */
+    private fun showTab(claude: Boolean) {
+        trackpad.visibility = if (claude) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.mouseRow).visibility = if (claude) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.claudePanel).visibility = if (claude) View.VISIBLE else View.GONE
+        styleTab(tabTrackpad, selected = !claude)
+        styleTab(tabClaude, selected = claude)
+        if (claude) claudePanel.start()
+        KeyOutput.target = if (claude) Target.CLAUDE else Target.PC
+        refreshTarget()
+    }
+
+    private fun toggleTarget() {
+        if (KeyOutput.target == Target.PC) {
+            claudePanel.start() // typing to Claude needs the terminal, even from the trackpad tab
+            KeyOutput.target = Target.CLAUDE
+        } else {
+            KeyOutput.target = Target.PC
+        }
+    }
+
+    private fun refreshTarget() {
+        val claude = KeyOutput.target == Target.CLAUDE
+        btnTarget.text = if (claude) "Keyboard → Claude" else "Keyboard → PC"
+        styleTab(btnTarget, selected = claude)
+        // What the phone keyboard had typed belonged to the other target.
+        keyCapture.resetMirror()
+    }
+
+    private fun styleTab(b: Button, selected: Boolean) {
+        b.background = if (selected) roundRect(getColor(R.color.key), 0) else null
+        b.setTextColor(getColor(if (selected) R.color.accent else R.color.text_dim))
+    }
+
     // ------------------------------------------------------------------ keyboard / shortcuts
 
     private fun toggleKeyboard() {
@@ -297,7 +356,7 @@ class MainActivity : Activity(), HidController.Listener {
         val b = newKeyButton(label)
         val press = {
             if (checkConnected()) {
-                HidController.tap(listOf(stroke), Modifiers.takeOneShot())
+                KeyOutput.tap(listOf(stroke), Modifiers.takeOneShot())
                 keyCapture.resetMirror()
             }
         }
@@ -389,12 +448,14 @@ class MainActivity : Activity(), HidController.Listener {
         }
     }
 
+    /** Whether the current typing target would receive a key now; tells the user if not. */
     private fun checkConnected(): Boolean {
-        if (HidController.state == State.CONNECTED) return true
+        if (KeyOutput.sink.isReady) return true
         val now = System.currentTimeMillis()
         if (now - lastNotConnectedToast > 2000) {
             lastNotConnectedToast = now
-            Toast.makeText(this, "Not connected to a device yet", Toast.LENGTH_SHORT).show()
+            val message = if (KeyOutput.target == Target.CLAUDE) "Claude isn't connected" else "Not connected to a device yet"
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         }
         return false
     }

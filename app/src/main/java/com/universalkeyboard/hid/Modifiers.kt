@@ -1,5 +1,7 @@
 package com.universalkeyboard.hid
 
+import com.universalkeyboard.input.KeyOutput
+
 /**
  * Sticky Ctrl / Alt / Shift / Win from the shortcut bar.
  *
@@ -31,7 +33,7 @@ object Modifiers {
             }
             else -> oneShot = oneShot or bit
         }
-        HidController.setHeldModifiers(locked)
+        KeyOutput.setHeldModifiers(locked)
         listener?.invoke()
     }
 
@@ -48,7 +50,9 @@ object Modifiers {
     fun clear() {
         oneShot = 0
         locked = 0
+        // Release everywhere, whichever target is selected right now.
         HidController.setHeldModifiers(0)
+        KeyOutput.terminal?.setHeldModifiers(0)
         listener?.invoke()
     }
 }

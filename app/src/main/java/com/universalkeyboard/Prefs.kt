@@ -28,6 +28,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("smart_typing", false)
         set(v) = sp.edit().putBoolean("smart_typing", v).apply()
 
+    /** Port of the Claude bridge on 127.0.0.1 (see bridge/claude_bridge.py). */
+    var bridgePort: Int
+        get() = sp.getInt("bridge_port", DEFAULT_BRIDGE_PORT)
+        set(v) = sp.edit().putInt("bridge_port", v).apply()
+
+    /** Pairing code printed by the bridge. Kept in app-private storage only (backups are off). */
+    var bridgeCode: String
+        get() = sp.getString("bridge_code", "") ?: ""
+        set(v) = sp.edit().putString("bridge_code", v).apply()
+
     var lastUpdateCheck: Long
         get() = sp.getLong("last_update_check", 0L)
         set(v) = sp.edit().putLong("last_update_check", v).apply()
@@ -38,6 +48,7 @@ class Prefs(context: Context) {
 
     companion object {
         const val DEFAULT_MOUSE_RATE = 125
+        const val DEFAULT_BRIDGE_PORT = 8765
         val MOUSE_RATES = listOf(125, 90, 60, 45)
     }
 }

@@ -76,6 +76,14 @@ object KeyMap {
         return plain.map { table.getValue(it) }
     }
 
+    private val reverse: Map<KeyStroke, Char> by lazy {
+        // '\n' and '\t' share their stroke with Enter/Tab; those are encoded as keys.
+        table.entries.filter { it.key != '\n' && it.key != '\t' }.associate { it.value to it.key }
+    }
+
+    /** The character a key types with or without Shift (US layout), or null for non-character keys. */
+    fun charFor(usage: Int, shift: Boolean): Char? = reverse[KeyStroke(usage, if (shift) S else 0)]
+
     /** Number of host keystrokes [text] turns into (used to count backspaces / arrows). */
     fun width(text: CharSequence): Int = text.sumOf { strokesFor(it).size }
 

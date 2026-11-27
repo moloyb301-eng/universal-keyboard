@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!-- Everything here is bundled; the app blocks any other load (ClaudeTerminal.kt). -->
+<link rel="stylesheet" href="vendor/xterm/xterm.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #1B1D22; overflow: hidden; }
+  #term { position: absolute; inset: 4px; }
+</style>
+</head>
+<body>
+<div id="term"></div>
+<script src="vendor/xterm/xterm.js"></script>
+<script src="vendor/addon-fit/addon-fit.js"></script>
+<script src="terminal.js"></script>
+</body>
+</html>

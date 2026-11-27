@@ -7,7 +7,6 @@ import android.view.KeyEvent
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.InputMethodManager
 import com.universalkeyboard.hid.Hid
-import com.universalkeyboard.hid.HidController
 import com.universalkeyboard.hid.KeyMap
 import com.universalkeyboard.hid.KeyStroke
 import com.universalkeyboard.hid.Modifiers
@@ -16,6 +15,8 @@ import kotlin.math.min
 
 /**
  * Lets the phone's own keyboard (Samsung Keyboard, Gboard, ...) type on the host.
+ * "Host" here is whatever [KeyOutput] targets: the Bluetooth PC, or the Claude
+ * terminal, which accepts the same strokes and edits its prompt the same way.
  *
  * The keyboard edits a private text buffer exactly as if it were a normal text
  * field. After every edit we compare the buffer with what we've already typed on
@@ -239,7 +240,7 @@ class HidInputConnection(private val owner: KeyCaptureView) : BaseInputConnectio
     private fun send(strokes: List<KeyStroke>, useOneShot: Boolean, raw: Boolean = false) {
         if (strokes.isEmpty()) return
         if (!raw && Modifiers.shortcutActive) requestReset() // host ran a shortcut, not typed text
-        HidController.tap(strokes, if (useOneShot) Modifiers.takeOneShot() else 0, raw)
+        KeyOutput.tap(strokes, if (useOneShot) Modifiers.takeOneShot() else 0, raw)
     }
 
     private fun sendAndReset(usage: Int, resetIfShortcutOnly: Boolean = false) {

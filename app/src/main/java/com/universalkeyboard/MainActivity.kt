@@ -22,6 +22,8 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
@@ -231,6 +233,11 @@ class MainActivity : Activity(), HidController.Listener {
         }
         statusText.text = text
         statusDot.setTextColor(getColor(color))
+        applyMouseRate()
+    }
+
+    private fun applyMouseRate() {
+        HidController.mouseIntervalMs = (1000 / prefs.mouseRate(HidController.host?.address)).toLong()
     }
 
     // ------------------------------------------------------------------ keyboard / shortcuts
@@ -386,6 +393,7 @@ class MainActivity : Activity(), HidController.Listener {
         trackpad.scrollSpeed = prefs.scrollSpeed
         trackpad.naturalScroll = prefs.naturalScroll
         keyCapture.smartTyping = prefs.smartTyping
+        applyMouseRate()
     }
 
     private fun showSettings() {
@@ -403,6 +411,24 @@ class MainActivity : Activity(), HidController.Listener {
         }
         val scroll = SeekBar(this).apply {
             max = 30; progress = ((prefs.scrollSpeed - 0.3f) * 10).roundToInt().coerceIn(0, 30)
+        }
+        val host = HidController.host
+        val hostName = host?.let { HidController.nameOf(it) }
+        val currentRate = prefs.mouseRate(host?.address)
+        val rateGroup = RadioGroup(this).apply { orientation = RadioGroup.HORIZONTAL }
+        Prefs.MOUSE_RATES.forEach { rate ->
+            rateGroup.addView(RadioButton(this).apply {
+                id = rate
+                text = "$rate"
+                setTextColor(getColor(R.color.text))
+                isChecked = rate == currentRate
+            })
+        }
+        val rateNote = TextView(this).apply {
+            text = "Updates per second, saved for ${hostName ?: "new devices"}. Lower it if the cursor " +
+                "trails behind your finger or keeps moving after you lift it (e.g. Steam Deck)."
+            setTextColor(getColor(R.color.text_dim))
+            textSize = 12f
         }
         val natural = CheckBox(this).apply {
             text = "Natural scrolling (content follows fingers)"
@@ -423,6 +449,9 @@ class MainActivity : Activity(), HidController.Listener {
         box.addView(pointer)
         box.addView(label("Scroll speed"))
         box.addView(scroll)
+        box.addView(label(if (hostName != null) "Mouse update rate for $hostName" else "Mouse update rate"))
+        box.addView(rateGroup)
+        box.addView(rateNote)
         box.addView(natural)
         box.addView(smart)
         box.addView(note)
@@ -434,6 +463,9 @@ class MainActivity : Activity(), HidController.Listener {
                 prefs.scrollSpeed = 0.3f + scroll.progress / 10f
                 prefs.naturalScroll = natural.isChecked
                 prefs.smartTyping = smart.isChecked
+                if (rateGroup.checkedRadioButtonId != View.NO_ID) {
+                    prefs.setMouseRate(host?.address, rateGroup.checkedRadioButtonId)
+                }
                 applyPrefs()
             }
             .setNegativeButton("Cancel", null)

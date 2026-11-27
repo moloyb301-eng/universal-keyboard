@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothHidDevice
+import android.bluetooth.BluetoothHidDeviceAppQosSettings
 import android.bluetooth.BluetoothHidDeviceAppSdpSettings
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
@@ -45,7 +46,6 @@ object HidController {
     private const val SDP_DESCRIPTION = "Keyboard and trackpad"
     private const val SDP_PROVIDER = "Universal Keyboard"
     private const val KEY_DELAY_MS = 4L
-    private const val MOUSE_INTERVAL_MS = 8L
     private const val PREFS = "hid"
     private const val PREF_LAST_HOST = "last_host"
 
@@ -72,6 +72,13 @@ object HidController {
     private val pendPan = AtomicInteger()
     private val mouseQueued = AtomicBoolean(false)
     private var lastMouseSend = 0L
+
+    /**
+     * Minimum gap between mouse reports. Sending faster than the host's
+     * Bluetooth link accepts queues reports up and makes the cursor trail
+     * behind the finger, so slower hosts (e.g. Steam Deck) need a larger gap.
+     */
+    @Volatile var mouseIntervalMs = 8L
 
     // ------------------------------------------------------------------ lifecycle
 
@@ -236,11 +243,20 @@ object HidController {
         setMouseButton(bit, false)
     }
 
+    /**
+     * Sends an empty mouse report as soon as a finger touches the trackpad, so
+     * the Bluetooth link leaves power-saving mode before real movement starts.
+     */
+    fun wakeLink() {
+        val b = buttons
+        sender.execute { flushMouse(b, force = true) }
+    }
+
     /** Coalesces touch moves into at most one report every few milliseconds. */
     private fun queueMouse() {
         if (!mouseQueued.compareAndSet(false, true)) return
         sender.execute {
-            val wait = MOUSE_INTERVAL_MS - (System.currentTimeMillis() - lastMouseSend)
+            val wait = mouseIntervalMs - (System.currentTimeMillis() - lastMouseSend)
             if (wait > 0) Thread.sleep(wait)
             mouseQueued.set(false)
             flushMouse(buttons, force = false)
@@ -293,8 +309,16 @@ object HidController {
             SDP_NAME, SDP_DESCRIPTION, SDP_PROVIDER,
             BluetoothHidDevice.SUBCLASS1_COMBO, HidDescriptor.DESCRIPTOR,
         )
+        // Ask for a low-latency link (11.25 ms, the usual figure for Bluetooth
+        // mice). Some phones reject QoS settings, so fall back to defaults.
+        val lowLatency = BluetoothHidDeviceAppQosSettings(
+            BluetoothHidDeviceAppQosSettings.SERVICE_BEST_EFFORT,
+            800, 9, 0, 11250, BluetoothHidDeviceAppQosSettings.MAX,
+        )
+        val executor = Executor { main.post(it) }
         val ok = try {
-            h.registerApp(sdp, null, null, Executor { main.post(it) }, hidCallback)
+            h.registerApp(sdp, null, lowLatency, executor, hidCallback) ||
+                h.registerApp(sdp, null, null, executor, hidCallback)
         } catch (e: SecurityException) {
             false
         }

@@ -91,6 +91,7 @@ class TrackpadView(context: Context, attrs: AttributeSet?) : View(context, attrs
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
+                HidController.wakeLink()
                 mode = Mode.MOVE
                 activeId = e.getPointerId(0)
                 lastX = e.x; lastY = e.y

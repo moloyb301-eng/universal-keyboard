@@ -66,7 +66,7 @@ retyping. Leave it off for the most reliable typing.
 ## Limitations
 
 - Needs Android 9 or newer, and a phone whose maker hasn't disabled the
-  Bluetooth HID device profile. Samsung Galaxy phones support it.
+  Bluetooth HID device profile (most do).
 - Assumes the US keyboard layout on Windows. Emoji and accented
   characters are skipped.
 - Scrolling is mouse-wheel style, not a Windows Precision Touchpad.

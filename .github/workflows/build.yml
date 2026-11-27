@@ -96,7 +96,7 @@ jobs:
           "$APKSIGNER" verify --print-certs dist/universal-keyboard.apk | grep -E "SHA-256|DN"
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: universal-keyboard-${{ steps.version.outputs.name }}
           path: |
